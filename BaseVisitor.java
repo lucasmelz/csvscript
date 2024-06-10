@@ -5,6 +5,7 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
     private Set<String> persistentMatrices = new HashSet<>();
     private Set<String> temporaryMatrices = new HashSet<>();
     private Set<String> scalars = new HashSet<>();
+    private static String CSV_SAMPLES_PATH = "./csv_samples/";
 
     @Override
     public String visitProg(CsvScriptParser.ProgContext ctx) {
@@ -19,7 +20,8 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
 
         // Save persistent matrices to CSV files before exiting
         for (String varName : persistentMatrices) {
-            sb.append(String.format("    save_matrix_to_csv(\"%s.csv\", %s);\n", varName, varName));
+            sb.append(String.format("    save_matrix_to_csv(\"" + CSV_SAMPLES_PATH + "%s.csv\", %s);\n", varName,
+                    varName));
             sb.append(String.format("    free_matrix(%s);\n", varName)); // Free the matrix memory
         }
 
@@ -34,7 +36,7 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
         persistentMatrices.add(varName);
         return String.format(
                 "    // Load matrix from CSV file\n" +
-                        "    Matrix *%s = load_matrix_from_csv(\"%s.csv\");\n" +
+                        "    Matrix *%s = load_matrix_from_csv(\"" + CSV_SAMPLES_PATH + "%s.csv\");\n" +
                         "    if (%s == NULL) {\n" +
                         "        fprintf(stderr, \"Failed to load matrix from CSV file.\\n\");\n" +
                         "        return 1;\n" +
