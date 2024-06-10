@@ -79,14 +79,18 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
             // then return the formatted instruction as an assignment of an integer
             for (String matrix : persistentMatrices) {
                 if (expr.matches(matrix + "\\[[0-9]+\\]\\[[0-9]+\\]")) {
+                    String formattedExpr = expr.replaceAll(matrix + "\\[([0-9]+)\\]\\[([0-9]+)\\]",
+                            matrix + "->data[$1][$2]");
                     scalars.add(varName);
-                    return String.format("    int %s = %s;\n", varName, expr);
+                    return String.format("    int %s = %s;\n", varName, formattedExpr);
                 }
             }
             for (String matrix : temporaryMatrices) {
                 if (expr.matches(matrix + "\\[[0-9]+\\]\\[[0-9]+\\]")) {
+                    String formattedExpr = expr.replaceAll(matrix + "\\[([0-9]+)\\]\\[([0-9]+)\\]",
+                            matrix + "->data[$1][$2]");
                     scalars.add(varName);
-                    return String.format("    int %s = %s;\n", varName, expr);
+                    return String.format("    int %s = %s;\n", varName, formattedExpr);
                 }
             }
 

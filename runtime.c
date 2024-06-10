@@ -14,7 +14,10 @@ Matrix *load_matrix_from_csv(const char *filename);
 void save_matrix_to_csv(const char *filename, Matrix *matrix);
 Matrix *transpose_matrix(Matrix *matrix);
 Matrix *multiply_matrices(Matrix *matrix1, Matrix *matrix2);
-void add_scalar_to_matrix(Matrix *matrix, int scalar);
+Matrix *multiply_matrix_by_scalar(Matrix *matrix, int scalar);
+Matrix *add_scalar_to_matrix(Matrix *matrix, int scalar);
+Matrix *extract_row(Matrix *matrix, int row_index);
+
 void free_matrix(Matrix *matrix);
 
 // Utility function to count lines and columns in a CSV file
@@ -22,8 +25,33 @@ void count_rows_and_cols(const char *filename, int *rows, int *cols);
 
 int main()
 {
-    // Insert here the generated program
-    return 0;
+    // INSERT HERE GENERATED CODE
+    // Example 3
+    // Matrix *A = load_matrix_from_csv("./csv_samples/A.csv");
+    // if (A == NULL)
+    // {
+    //     fprintf(stderr, "Failed to load matrix from CSV file.\n");
+    //     return 1;
+    // }
+    // // Load matrix from CSV file
+    // Matrix *E = load_matrix_from_csv("./csv_samples/E.csv");
+    // if (E == NULL)
+    // {
+    //     fprintf(stderr, "Failed to load matrix from CSV file.\n");
+    //     return 1;
+    // }
+    // Matrix *row = extract_row(E, 0);
+    // row = add_scalar_to_matrix(row, 1);
+    // row = add_scalar_to_matrix(row, -1);
+    // row = multiply_matrix_by_scalar(row, 2);
+    // int element = E->data[0][1];
+    // Matrix *D = transpose_matrix(A);
+    // A = multiply_matrices(D, E);
+    // save_matrix_to_csv("./csv_samples/A.csv", A);
+    // free_matrix(A);
+    // save_matrix_to_csv("./csv_samples/E.csv", E);
+    // free_matrix(E);
+    // return 0;
 }
 
 // Function to load a matrix from a CSV file
@@ -147,27 +175,43 @@ Matrix *add_matrices(Matrix *m1, Matrix *m2)
 }
 
 // Function to add a scalar to all elements of a matrix
-void add_scalar_to_matrix(Matrix *matrix, int scalar)
+Matrix *add_scalar_to_matrix(Matrix *matrix, int scalar)
 {
-    for (int i = 0; i < matrix->rows; i++)
+    Matrix *result = (Matrix *)malloc(sizeof(Matrix));
+    result->rows = matrix->rows;
+    result->cols = matrix->cols;
+    result->data = (int **)malloc(result->rows * sizeof(int *));
+
+    for (int i = 0; i < result->rows; i++)
     {
-        for (int j = 0; j < matrix->cols; j++)
+        result->data[i] = (int *)malloc(result->cols * sizeof(int));
+        for (int j = 0; j < result->cols; j++)
         {
-            matrix->data[i][j] += scalar;
+            result->data[i][j] = matrix->data[i][j] + scalar;
         }
     }
+
+    return result;
 }
 
-// Function to multiply a matrix by a scalar
-void multiply_matrix_by_scalar(Matrix *matrix, int scalar)
+// Function to multiply a matrix by a scalar and return the result as a new matrix
+Matrix *multiply_matrix_by_scalar(Matrix *matrix, int scalar)
 {
-    for (int i = 0; i < matrix->rows; i++)
+    Matrix *result = (Matrix *)malloc(sizeof(Matrix));
+    result->rows = matrix->rows;
+    result->cols = matrix->cols;
+    result->data = (int **)malloc(result->rows * sizeof(int *));
+
+    for (int i = 0; i < result->rows; i++)
     {
-        for (int j = 0; j < matrix->cols; j++)
+        result->data[i] = (int *)malloc(result->cols * sizeof(int));
+        for (int j = 0; j < result->cols; j++)
         {
-            matrix->data[i][j] *= scalar;
+            result->data[i][j] = matrix->data[i][j] * scalar;
         }
     }
+
+    return result;
 }
 
 // Function to extract a row from a matrix and return it as a single-row matrix
