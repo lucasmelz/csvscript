@@ -1,0 +1,7 @@
+persistent A
+persistent B
+row = B[1]
+row = row + 10
+element = row[0]
+C = A * element
+B = transpose C

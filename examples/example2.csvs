@@ -1,0 +1,6 @@
+persistent A
+persistent B
+C = A + B
+C = C + 5
+D = C - 2
+B = tranpose D

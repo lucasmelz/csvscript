@@ -21,17 +21,8 @@ javac -cp .:antlr.jar *.java
 
 ```
 
-4. Execute main function to generate C code
+4. Transpile csvs program to C, compile and execute the program with:
 
 ```
-java -cp .:antlr.jar Main
-
-```
-
-5. Place the generated code for into the runtime.c main function.
-
-6. Compile and execute the runtime:
-
-```
-gcc -o runtime runtime.c && ./runtime
+java -cp .:antlr.jar  Main <YOUR_CSVS_PROGRAM>.csvs
 ```

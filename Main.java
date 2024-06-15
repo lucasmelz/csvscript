@@ -1,48 +1,63 @@
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
+import java.io.*;
+import java.nio.file.*;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        // Example 1
-        String input1 = "persistent D\n" +
-                "matrix2 = transpose D\n" +
-                "result = D * matrix2\n" +
-                "D = result + 10\n";
+        if (args.length != 1) {
+            System.out.println("Usage: java Main <path-to-csvs-file>");
+            return;
+        }
 
-        // Example 2
-        String input2 = "persistent A\n" +
-                "persistent B\n" +
-                "C = A + B\n" +
-                "result = transpose C\n";
+        String csvsFilePath = args[0];
+        String csvsScriptContent = readCsvsFile(csvsFilePath);
 
-        // Example 3
-        String input3 = "persistent A\n" +
-                "persistent E\n" +
-                "row = E[ 0 ]\n" +
-                "row = row + 1\n" +
-                "row = row - 1\n" +
-                "row = row * 2\n" +
-                "element = E[0][1]\n" +
-                "D = transpose A\n" +
-                "A = D * E\n";
+        CsvScriptLexer lexer = new CsvScriptLexer(CharStreams.fromString(csvsScriptContent));
+        CsvScriptParser parser = new CsvScriptParser(new CommonTokenStream(lexer));
+        ParseTree tree = parser.prog();
 
-        // List of test cases
-        String[] inputs = { input1, input2, input3 };
+        BaseVisitor visitor = new BaseVisitor();
+        String cCode = visitor.visit(tree);
 
-        // Process each input
-        for (int i = 0; i < inputs.length; i++) {
-            System.out.println("Example " + (i + 1) + ":\n");
-            String input = inputs[i];
+        String cFilePath = csvsFilePath.replace(".csvs", ".c");
+        writeCFile(cFilePath, cCode);
 
-            CsvScriptLexer lexer = new CsvScriptLexer(CharStreams.fromString(input));
-            CsvScriptParser parser = new CsvScriptParser(new CommonTokenStream(lexer));
-            ParseTree tree = parser.prog();
+        compileAndRunCFile(cFilePath);
+    }
 
-            BaseVisitor visitor = new BaseVisitor();
-            String cCode = visitor.visit(tree);
+    private static String readCsvsFile(String filePath) throws IOException {
+        return new String(Files.readAllBytes(Paths.get(filePath)));
+    }
 
-            System.out.println(cCode);
-            System.out.println("\n---------------------------------------\n");
+    private static void writeCFile(String filePath, String content) throws IOException {
+        Files.write(Paths.get(filePath), content.getBytes());
+    }
+
+    private static void compileAndRunCFile(String cFilePath) throws IOException, InterruptedException {
+        String runtimePath = "./runtime.c"; // Specify the path to your runtime.c
+        String outputBinaryPath = cFilePath.replace(".c", "");
+
+        Process compileProcess = new ProcessBuilder("gcc", runtimePath, cFilePath, "-o", outputBinaryPath).inheritIO()
+                .start();
+        int compileExitCode = compileProcess.waitFor();
+
+        if (compileExitCode != 0) {
+            System.out.println("Compilation failed.");
+            return;
+        }
+
+        File binaryFile = new File(outputBinaryPath);
+        if (!binaryFile.exists()) {
+            System.out.println("Compiled binary not found.");
+            return;
+        }
+
+        Process runProcess = new ProcessBuilder("./" + outputBinaryPath).inheritIO().start();
+        int runExitCode = runProcess.waitFor();
+
+        if (runExitCode != 0) {
+            System.out.println("Execution failed.");
         }
     }
 }

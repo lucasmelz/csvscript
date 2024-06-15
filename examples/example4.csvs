@@ -1,0 +1,4 @@
+persistent A
+element = A[0][1]
+element = element * 2
+A = transpose A

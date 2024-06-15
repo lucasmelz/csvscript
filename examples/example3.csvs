@@ -1,0 +1,5 @@
+persistent A
+persistent B
+C = A * B
+result = transpose C
+A = C

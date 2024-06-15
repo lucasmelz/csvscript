@@ -4,7 +4,9 @@ import java.util.*;
 public class BaseVisitor extends CsvScriptBaseVisitor<String> {
     private Set<String> persistentMatrices = new HashSet<>();
     private Set<String> temporaryMatrices = new HashSet<>();
+    private Set<String> vectors = new HashSet<>();
     private Set<String> scalars = new HashSet<>();
+
     private static String CSV_SAMPLES_PATH = "./csv_samples/";
 
     @Override
@@ -12,6 +14,8 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
         StringBuilder sb = new StringBuilder();
         sb.append("#include <stdio.h>\n");
         sb.append("#include <stdlib.h>\n");
+        sb.append("#include \"runtime.h\"\n");
+
         sb.append("int main() {\n");
 
         for (CsvScriptParser.StatContext statCtx : ctx.stat()) {
@@ -49,7 +53,8 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
         String varName = ctx.assignment().ID().getText();
         String expr = visit(ctx.assignment().expr());
 
-        if (persistentMatrices.contains(varName) || temporaryMatrices.contains(varName) || scalars.contains(varName)) {
+        if (persistentMatrices.contains(varName) || temporaryMatrices.contains(varName) || vectors.contains(varName)
+                || scalars.contains(varName)) {
             return String.format("    %s = %s;\n", varName, expr);
         } else {
 
@@ -60,15 +65,15 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
             // of a new matrix (with just one row)
             for (String matrix : persistentMatrices) {
                 if (expr.matches(matrix + "\\[[0-9]+\\]")) {
-                    temporaryMatrices.add(varName);
-                    return String.format("    Matrix *%s = extract_row(%s, %s);\n", varName, matrix,
+                    vectors.add(varName);
+                    return String.format("    Vector *%s = extract_row(%s, %s);\n", varName, matrix,
                             expr.substring(matrix.length() + 1, expr.length() - 1));
                 }
             }
             for (String matrix : temporaryMatrices) {
                 if (expr.matches(matrix + "\\[[0-9]+\\]")) {
-                    temporaryMatrices.add(varName);
-                    return String.format("    Matrix *%s = extract_row(%s, %s);\n", varName, matrix,
+                    vectors.add(varName);
+                    return String.format("    Vector *%s = extract_row(%s, %s);\n", varName, matrix,
                             expr.substring(matrix.length() + 1, expr.length() - 1));
                 }
             }
@@ -142,20 +147,42 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
                 return String.format("multiply_matrices(%s, %s)", left, right);
             }
 
+            // if left side is a vector and assuming right side is a scalar
+            if (vectors.contains(left) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("multiply_vector_by_scalar(%s, %s)", left, right);
+            }
+
             // if left side is a matrix and assuming right side is a scalar
-            if (persistentMatrices.contains(left) || temporaryMatrices.contains(left)) {
+            if (persistentMatrices.contains(left)
+                    || temporaryMatrices.contains(left) && (scalars.contains(right) || isScalar(right))) {
                 return String.format("multiply_matrix_by_scalar(%s, %s)", left, right);
             }
 
+            // if right side is a vector and assuming left side is a scalar
+            if (vectors.contains(right) && (scalars.contains(left) || isScalar(left))) {
+                return String.format("multiply_vector_by_scalar(%s, %s)", right, left);
+            }
+
             // if right side is a matrix and assuming left side is a scalar
-            if (persistentMatrices.contains(right) || temporaryMatrices.contains(right)) {
+            if (persistentMatrices.contains(right)
+                    || temporaryMatrices.contains(right) && (scalars.contains(left) || isScalar(left))) {
                 return String.format("multiply_matrix_by_scalar(%s, %s)", right, left);
             }
 
-            // default case, assuming they are both scalars
-            return String.format("%s * %s", left, right);
+            // both sides are scalars
+            if ((scalars.contains(left) || isScalar(left)) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("%s * %s", left, right);
+            }
+
+            throw new RuntimeException("Compilation error: unknown types involved in multiplication operation.");
         } else {
             // Division operation
+
+            // Divide vector by a scalar
+            if (vectors.contains(left) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("divide_vector_by_scalar(%s, %s)", left, right);
+            }
+
             // if both sides are matrices, the operation is invalid
             if ((persistentMatrices.contains(left) || temporaryMatrices.contains(left)) &&
                     (persistentMatrices.contains(right) || temporaryMatrices.contains(right))) {
@@ -163,17 +190,28 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
             }
 
             // if left side is a matrix and right side is a scalar
-            if (persistentMatrices.contains(left) || temporaryMatrices.contains(left)) {
+            if (persistentMatrices.contains(left)
+                    || temporaryMatrices.contains(left) && (scalars.contains(right) || isScalar(right))) {
                 return String.format("divide_matrix_by_scalar(%s, %s)", left, right);
             }
 
             // if right side is a matrix and left side is a scalar, operation is invalid
-            if (persistentMatrices.contains(right) || temporaryMatrices.contains(right)) {
-                throw new RuntimeException("Scalar division by matrix is not supported");
+            if (persistentMatrices.contains(right)
+                    || temporaryMatrices.contains(right) && (scalars.contains(left) || isScalar(left))) {
+                throw new RuntimeException("Scalar division by matrix is not possible");
             }
 
-            // default case, assume they are both scalars
-            return String.format("%s / %s", left, right);
+            // if right side is a vector and left side is a scalar, operation is invalid
+            if (vectors.contains(right) && (scalars.contains(left) || isScalar(left))) {
+                throw new RuntimeException("Scalar division by vector is not possible");
+            }
+
+            // both sides are scalars
+            if ((scalars.contains(left) || isScalar(left)) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("%s / %s", left, right);
+            }
+
+            throw new RuntimeException("Compilation error: unknown types involved in division operation.");
         }
     }
 
@@ -191,42 +229,66 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
                 return String.format("add_matrices(%s, %s)", left, right);
             }
 
-            // if left side is a matrix and assuming right side is a scalar
-            if (persistentMatrices.contains(left)) {
+            // if left side is a matrix and right side is a scalar
+            if (persistentMatrices.contains(left) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("add_scalar_to_matrix(%s, %s)", left, right);
+            }
+            if (temporaryMatrices.contains(left) && (scalars.contains(right) || isScalar(right))) {
                 return String.format("add_scalar_to_matrix(%s, %s)", left, right);
             }
 
-            if (temporaryMatrices.contains(left)) {
-                return String.format("add_scalar_to_matrix(%s, %s)", left, right);
+            // if right side is a matrix and left side is a scalar
+            if (persistentMatrices.contains(right) && (scalars.contains(left) || isScalar(left))) {
+                return String.format("add_scalar_to_matrix(%s, %s)", right, left);
             }
-
-            // if right side is a matrix and assuming left side is a scalar
-            if (persistentMatrices.contains(right)) {
+            if (temporaryMatrices.contains(right) && (scalars.contains(left) || isScalar(left))) {
                 return String.format("add_scalar_to_matrix(%s, %s)", right, left);
             }
 
-            if (temporaryMatrices.contains(right)) {
-                return String.format("add_scalar_to_matrix(%s, %s)", right, left);
+            // if left side is a vector and right side is a scalar
+            if (vectors.contains(left) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("add_scalar_to_vector(%s, %s)", left, right);
             }
 
-            // default case, assuming they are both scalars
-            return String.format("%s + %s", left, right);
+            // if right side is a vector and left side is a scalar
+            if (vectors.contains(right) && (scalars.contains(left) || isScalar(left))) {
+                return String.format("add_scalar_to_vector(%s, %s)", right, left);
+            }
+
+            // if both sides are scalars
+            if ((scalars.contains(left) || isScalar(left)) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("%s + %s", left, right);
+            }
+
+            throw new RuntimeException("Compilation error: unknown types involved in addition operation.");
         } else {
             // Subtraction operation
 
-            // if left side is a matrix and right side is a scalar
-            if (persistentMatrices.contains(left)) {
-                return String.format("add_scalar_to_matrix(%s, -%s)", left, right);
+            // If left side is a vector and assuming right side is a scalar
+            if (vectors.contains(left) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("add_scalar_to_vector(%s, -%s)", left, right);
             }
 
-            if (temporaryMatrices.contains(left)) {
+            // if left side is a matrix and right side is a scalar
+            if (persistentMatrices.contains(left) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("add_scalar_to_matrix(%s, -%s)", left, right);
+            }
+            if (temporaryMatrices.contains(left) && (scalars.contains(right) || isScalar(right))) {
                 return String.format("add_scalar_to_matrix(%s, -%s)", left, right);
             }
 
             // if right side is a matrix and left side is a scalar, operation is invalid
+            if ((temporaryMatrices.contains(right) || persistentMatrices.contains(right))
+                    && (scalars.contains(left) || isScalar(left))) {
+                throw new RuntimeException("Compilation error: you cannot divide a scalar by a matrix!");
+            }
 
-            // default case, assume they are both scalars
-            return String.format("%s - %s", left, right);
+            // Both sides are scalars
+            if ((scalars.contains(left) || isScalar(left)) && (scalars.contains(right) || isScalar(right))) {
+                return String.format("%s - %s", left, right);
+            }
+
+            throw new RuntimeException("Compilation error: unknown types involved in subtraction operation.");
         }
     }
 
@@ -274,5 +336,17 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
     @Override
     public String visitEmptyStat(CsvScriptParser.EmptyStatContext ctx) {
         return "";
+    }
+
+    public static boolean isScalar(String str) {
+        if (str == null || str.isEmpty()) {
+            return false;
+        }
+        try {
+            Integer.parseInt(str);
+            return true;
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 }

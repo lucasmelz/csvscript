@@ -1,58 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-
-// Matrix struct definition
-typedef struct
-{
-    int **data;
-    int rows;
-    int cols;
-} Matrix;
-
-// Function prototypes
-Matrix *load_matrix_from_csv(const char *filename);
-void save_matrix_to_csv(const char *filename, Matrix *matrix);
-Matrix *transpose_matrix(Matrix *matrix);
-Matrix *multiply_matrices(Matrix *matrix1, Matrix *matrix2);
-Matrix *multiply_matrix_by_scalar(Matrix *matrix, int scalar);
-Matrix *add_scalar_to_matrix(Matrix *matrix, int scalar);
-Matrix *extract_row(Matrix *matrix, int row_index);
-
-void free_matrix(Matrix *matrix);
-
-// Utility function to count lines and columns in a CSV file
-void count_rows_and_cols(const char *filename, int *rows, int *cols);
-
-int main()
-{
-    // INSERT HERE GENERATED CODE
-    // Example 3
-    // Matrix *A = load_matrix_from_csv("./csv_samples/A.csv");
-    // if (A == NULL)
-    // {
-    //     fprintf(stderr, "Failed to load matrix from CSV file.\n");
-    //     return 1;
-    // }
-    // // Load matrix from CSV file
-    // Matrix *E = load_matrix_from_csv("./csv_samples/E.csv");
-    // if (E == NULL)
-    // {
-    //     fprintf(stderr, "Failed to load matrix from CSV file.\n");
-    //     return 1;
-    // }
-    // Matrix *row = extract_row(E, 0);
-    // row = add_scalar_to_matrix(row, 1);
-    // row = add_scalar_to_matrix(row, -1);
-    // row = multiply_matrix_by_scalar(row, 2);
-    // int element = E->data[0][1];
-    // Matrix *D = transpose_matrix(A);
-    // A = multiply_matrices(D, E);
-    // save_matrix_to_csv("./csv_samples/A.csv", A);
-    // free_matrix(A);
-    // save_matrix_to_csv("./csv_samples/E.csv", E);
-    // free_matrix(E);
-    // return 0;
-}
+#include "runtime.h"
 
 // Function to load a matrix from a CSV file
 Matrix *load_matrix_from_csv(const char *filename)
@@ -214,8 +162,8 @@ Matrix *multiply_matrix_by_scalar(Matrix *matrix, int scalar)
     return result;
 }
 
-// Function to extract a row from a matrix and return it as a single-row matrix
-Matrix *extract_row(Matrix *matrix, int row_index)
+// Function to extract a row from a matrix and return it as a vector
+Vector *extract_row(Matrix *matrix, int row_index)
 {
     if (row_index >= matrix->rows)
     {
@@ -223,16 +171,40 @@ Matrix *extract_row(Matrix *matrix, int row_index)
         return NULL;
     }
 
-    Matrix *row_matrix = (Matrix *)malloc(sizeof(Matrix));
-    row_matrix->rows = 1;
-    row_matrix->cols = matrix->cols;
-    row_matrix->data = (int **)malloc(sizeof(int *));
-    row_matrix->data[0] = (int *)malloc(matrix->cols * sizeof(int));
+    Vector *vector = (Vector *)malloc(sizeof(Vector));
+    vector->size = matrix->cols;
+    vector->data = (int *)malloc(matrix->cols * sizeof(int));
     for (int j = 0; j < matrix->cols; j++)
     {
-        row_matrix->data[0][j] = matrix->data[row_index][j];
+        vector->data[j] = matrix->data[row_index][j];
     }
-    return row_matrix;
+    return vector;
+}
+
+// Function to add a scalar to all elements of a vector
+Vector *add_scalar_to_vector(Vector *vector, int scalar)
+{
+    Vector *result = (Vector *)malloc(sizeof(Vector));
+    result->size = vector->size;
+    result->data = (int *)malloc(vector->size * sizeof(int));
+    for (int i = 0; i < vector->size; i++)
+    {
+        result->data[i] = vector->data[i] + scalar;
+    }
+    return result;
+}
+
+// Function to multiply a vector by a scalar and return the result as a new vector
+Vector *multiply_vector_by_scalar(Vector *vector, int scalar)
+{
+    Vector *result = (Vector *)malloc(sizeof(Vector));
+    result->size = vector->size;
+    result->data = (int *)malloc(vector->size * sizeof(int));
+    for (int i = 0; i < vector->size; i++)
+    {
+        result->data[i] = vector->data[i] * scalar;
+    }
+    return result;
 }
 
 // Function to free allocated memory for a matrix
@@ -244,6 +216,13 @@ void free_matrix(Matrix *matrix)
     }
     free(matrix->data);
     free(matrix);
+}
+
+// Function to free allocated memory for a vector
+void free_vector(Vector *vector)
+{
+    free(vector->data);
+    free(vector);
 }
 
 // Utility function to count rows and columns in a CSV file
