@@ -5,12 +5,14 @@ import java.nio.file.*;
 
 public class Main {
     public static void main(String[] args) throws Exception {
-        if (args.length != 1) {
-            System.out.println("Usage: java Main <path-to-csvs-file>");
+        if (args.length != 2) {
+            System.out.println("Usage: java -cp .:antlr.jar Main <path-to-csvs-file> <output-file-name>");
             return;
         }
 
         String csvsFilePath = args[0];
+        String outputFileName = args[1];
+
         String csvsScriptContent = readCsvsFile(csvsFilePath);
 
         CsvScriptLexer lexer = new CsvScriptLexer(CharStreams.fromString(csvsScriptContent));
@@ -20,10 +22,10 @@ public class Main {
         BaseVisitor visitor = new BaseVisitor();
         String cCode = visitor.visit(tree);
 
-        String cFilePath = csvsFilePath.replace(".csvs", ".c");
+        String cFilePath = outputFileName + ".c";
         writeCFile(cFilePath, cCode);
 
-        compileAndRunCFile(cFilePath);
+        compileAndRunCFile(cFilePath, outputFileName);
     }
 
     private static String readCsvsFile(String filePath) throws IOException {
@@ -34,9 +36,9 @@ public class Main {
         Files.write(Paths.get(filePath), content.getBytes());
     }
 
-    private static void compileAndRunCFile(String cFilePath) throws IOException, InterruptedException {
+    private static void compileAndRunCFile(String cFilePath, String outputBinaryPath)
+            throws IOException, InterruptedException {
         String runtimePath = "./runtime.c"; // Specify the path to your runtime.c
-        String outputBinaryPath = cFilePath.replace(".c", "");
 
         Process compileProcess = new ProcessBuilder("gcc", runtimePath, cFilePath, "-o", outputBinaryPath).inheritIO()
                 .start();

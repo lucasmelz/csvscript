@@ -78,7 +78,19 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
                 }
             }
 
-            // case 2 (selecting a scalar from a matrix):
+            // case 2 (selecting a scalar from a vector):
+            // check if the expression contains one of the temporary
+            // matrices or persistent matrices followed by [row-index][col-index] and
+            // then return the formatted instruction as an assignment of an integer
+            for (String vector : vectors) {
+                if (expr.matches(vector + "\\[[0-9]+\\]")) {
+                    String formattedExpr = expr.replaceAll(vector + "\\[([0-9]+)\\]", vector + "->data[$1]");
+                    scalars.add(varName);
+                    return String.format("    int %s = %s;\n", varName, formattedExpr);
+                }
+            }
+
+            // case 3 (selecting a scalar from a matrix):
             // check if the expression contains one of the temporary
             // matrices or persistent matrices followed by [row-index][col-index] and
             // then return the formatted instruction as an assignment of an integer
@@ -99,7 +111,7 @@ public class BaseVisitor extends CsvScriptBaseVisitor<String> {
                 }
             }
 
-            // case 3 (temporary matrix assignment)
+            // case 4 (temporary matrix assignment)
             // check if the expression contains a transpose operation,
             // or an operation involving one of the persistent or temporary matrices,
             // then add this matrix to the temporaryMatrices set and format the assignment
