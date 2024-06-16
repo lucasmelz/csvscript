@@ -74,6 +74,22 @@ result = var1 * var2
 result = scalar1 / scalar 2
 ```
 
+- Addition
+
+  You can add matrices, add a scalar to a matrix, add a scalar to a vector and add scalars.
+
+  ```
+  result = var1 + var2
+  ```
+
+- Subtraction
+
+  You can subtract a scalar from a matrix, a scalar from a vector and perform subtraction between scalars.
+
+  ```
+  result = var1 - var2
+  ```
+
 You can find examples of CsvScript programs in the examples folder of this project.
 
 ## How to run a CsvScript program.
